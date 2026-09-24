@@ -1,0 +1,14 @@
+{
+  "name": "worldview",
+  "private": true,
+  "description": "A personal map of decisions: collect positions by question, hand only the relevant topics to an agent.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/*.test.js",
+    "context": "node context.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
