@@ -9,14 +9,16 @@
  *   ## Керування
  *
  *   - гра не прощає промаху: влучання рівно таке, як виглядає [2026-09-24, forgiving_hits]
- *   - руку видно до пікселя [2026-09-24, aim_assist, own]
+ *   - руку видно до пікселя [2026-09-24, aim_assist, своє]
  *
  *   ## Не знаю
  *
  *   - Як часто гра зберігає прогрес? [2026-09-24, checkpoint_density]
  *
- * Service fields sit in brackets at the end of a line. This module is the only
- * place that knows the format. Edits touch only the lines they are about;
+ * Service fields sit in brackets at the end of a line: the day, the question
+ * id, and `своє` when the owner wrote the line in their own words. The flag is
+ * Cyrillic so that no parser can take it for an ASCII id. This module is the
+ * only place that knows the format. Edits touch only the lines they are about;
  * whatever the parser does not recognise stays verbatim where it was.
  */
 
@@ -27,7 +29,10 @@ export const PREAMBLE = [
   'Конкретне завдання старше за цей файл.',
 ];
 
-const ENTRY = /^[-*+][ \t]+(\S.*?)[ \t]+\[(\d{4}-\d{2}-\d{2}),[ \t]*([a-z0-9_]+)(?:,[ \t]*(own|option))?\][ \t]*$/;
+// `own` is how this app spelled the flag for its first hours; it is read as
+// `своє` and rewritten on the next save, because other parsers take it for an id.
+const ENTRY = /^[-*+][ \t]+(\S.*?)[ \t]+\[(\d{4}-\d{2}-\d{2}),[ \t]*([a-z0-9_]+)(?:,[ \t]*(своє|own))?\][ \t]*$/;
+const LEGACY_OWN = /,[ \t]*own\][ \t]*$/;
 const BARE_MARK = /^[-*+][ \t]+([a-z0-9_]+)[ \t]*$/;
 const H1 = /^#[ \t]+(.*\S)[ \t]*$/;
 const H2 = /^##[ \t]+(.*\S)[ \t]*$/;
@@ -143,6 +148,7 @@ export function apply(text, layout, op) {
     default:
       throw new TypeError(`Unknown op: ${op.type}`);
   }
+  renameLegacyOwn(doc.lines);
   return join(doc);
 }
 
@@ -215,7 +221,7 @@ function join({ lines, eol, final }) {
 
 function parseEntry(line, section) {
   const m = ENTRY.exec(line);
-  if (m) return { id: m[3], text: m[1], on: m[2], source: m[4] === 'own' ? 'own' : 'option' };
+  if (m) return { id: m[3], text: m[1], on: m[2], source: m[4] ? 'own' : 'option' };
   if (section?.dontKnow) {
     const bare = BARE_MARK.exec(line);
     if (bare) return { id: bare[1], text: null, on: null, source: 'option' };
@@ -223,8 +229,14 @@ function parseEntry(line, section) {
   return null;
 }
 
+function renameLegacyOwn(lines) {
+  lines.forEach((line, i) => {
+    if (LEGACY_OWN.test(line) && ENTRY.test(line)) lines[i] = line.replace(LEGACY_OWN, ', своє]');
+  });
+}
+
 function formatAnswer({ line, on, id, source }) {
-  return `- ${oneLine(line)} [${on}, ${id}${source === 'own' ? ', own' : ''}]`;
+  return `- ${oneLine(line)} [${on}, ${id}${source === 'own' ? ', своє' : ''}]`;
 }
 
 function formatMark({ text, on, id }) {

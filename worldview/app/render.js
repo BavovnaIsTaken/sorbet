@@ -312,7 +312,7 @@ export function mount(root, ctl) {
         h('div.line-body', null, h('span.line-text', null, item.text), h('span.service', null, 'рукою, без службових полів')));
     }
     const e = item.entry;
-    const service = e.on ? h('span.service', null, `[${[e.on, e.id, e.source === 'own' ? 'own' : null].filter(Boolean).join(', ')}]`) : null;
+    const service = e.on ? h('span.service', null, `[${[e.on, e.id, e.source === 'own' ? 'своє' : null].filter(Boolean).join(', ')}]`) : null;
     if (item.kind === 'answer') {
       return h('li.line', null, bullet,
         h('div.line-body', null, h('span.line-text', null, e.text), service),

@@ -64,7 +64,7 @@ test('lines the parser does not understand survive every edit verbatim', () => {
 Абзац про керування, без дужок.
 - керування має бути чесним
 - гра не прощає промаху [2026-09-24, forgiving_hits]
-* зірочка замість мінуса   [2026-09-20, inertia, own]
+* зірочка замість мінуса   [2026-09-20, inertia, своє]
   - вкладений пункт
 
 ## Мої нотатки
@@ -108,8 +108,25 @@ test('marks carry the question text, go last, and replace the previous mark', ()
 
 test('own answers are flagged and the flag round-trips', () => {
   const out = apply(null, GAMES, answer('inertia', 'рука відчуває вагу', { source: 'own' }));
-  assert.match(out, /- рука відчуває вагу \[2026-09-25, inertia, own\]\n$/);
+  assert.match(out, /- рука відчуває вагу \[2026-09-25, inertia, своє\]\n$/);
   assert.equal(readMap(out).answers.get('inertia').source, 'own');
+});
+
+test('the flag is Cyrillic, so it can never be read as an id', () => {
+  const view = readMap('## Керування\n\n- рядок [2026-09-24, своє]\n- рядок [2026-09-24, own]\n');
+  assert.equal(view.answers.size, 1, 'only the line whose last field could be an id');
+  assert.equal(view.answers.has('своє'), false);
+});
+
+test('the legacy own flag is read, and the next save renames it and nothing else', () => {
+  const legacy = `${blankMap(GAMES)}\n## Керування\n\n- рука відчуває вагу [2026-09-24, inertia, own]\n- гра не прощає промаху [2026-09-24, forgiving_hits]\n`;
+  assert.equal(readMap(legacy).answers.get('inertia').source, 'own');
+  const out = apply(legacy, GAMES, answer('blame', 'після програшу гравець бачить власну помилку'));
+  assert.doesNotMatch(out, /, own\]/);
+  assert.equal(
+    out,
+    legacy.replace(', own]', ', своє]') + '\n## Провал\n\n- після програшу гравець бачить власну помилку [2026-09-25, blame]\n',
+  );
 });
 
 test('a line is always one line, and brackets inside it are text', () => {
