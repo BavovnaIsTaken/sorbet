@@ -15,6 +15,10 @@
  *
  *   - Як часто гра зберігає прогрес? [2026-09-24, checkpoint_density]
  *
+ * A line under "Не знаю" keeps the wording the question failed on. It is a
+ * snapshot of what was asked that day, not a reference to the bank: once the
+ * question is rewritten the two differ, and the snapshot is the record.
+ *
  * Service fields sit in brackets at the end of a line: the day, the question
  * id, and `своє` when the owner wrote the line in their own words. The flag is
  * Cyrillic so that no parser can take it for an ASCII id. This module is the
@@ -41,7 +45,8 @@ const LIST_ITEM = /^[-*+][ \t]/;
 /**
  * @typedef {Object} Entry  A recognised line: an answer, or a "не знаю" mark.
  * @property {string} id              Question id: the identity the entry hangs on.
- * @property {string|null} text       The answer line, or the question text of a mark.
+ * @property {string|null} text       The answer line; for a mark, the wording the question
+ *                                    failed on (a snapshot, never the bank's current text).
  *                                    Null only for a bare legacy mark ("- reward_size").
  * @property {string|null} on         Day it was written, YYYY-MM-DD. Null for a bare mark.
  * @property {'option'|'own'} source  Tapped a ready sentence, or wrote their own.

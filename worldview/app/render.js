@@ -18,9 +18,9 @@ const STORE = {
 };
 
 const MARK_STATE = {
-  waiting: 'чекає, поки питання перепишуть',
-  rewritten: 'переписане питання знову в черзі',
-  gone: 'питання вже нема в банку',
+  waiting: 'питання чекає, поки його перепишуть',
+  rewritten: 'банк уже питає інакше, і питання знову в черзі',
+  gone: 'питання знято з банку, лишився запис',
 };
 
 const AUTHOR = { claude: 'Claude' };
@@ -301,7 +301,7 @@ export function mount(root, ctl) {
         h('span.md', { 'aria-hidden': 'true' }, '##'),
         sec.dontKnow ? null : h('span.swatch', { 'aria-hidden': 'true' }),
         sec.title),
-      sec.dontKnow && sec.items.length ? h('p.section-hint', null, 'Це звіт про питання, а не відповідь: тут питання не влучили.') : null,
+      sec.dontKnow && sec.items.length ? h('p.section-hint', null, 'Формулювання, на яких питання не влучили. Це знімок того, що питали того дня, а не те, що банк питає зараз.') : null,
       h('ul.lines', null, sec.items.map((item) => lineView(domain, item))));
   }
 
@@ -321,7 +321,7 @@ export function mount(root, ctl) {
     const st = markState(e, domain);
     return h(`li.line.is-mark.is-${st}`, null, bullet,
       h('div.line-body', null,
-        h('span.line-text', null, e.text ?? e.id),
+        h('span.line-text', null, e.text ? `«${e.text}»` : e.id),
         service ?? h('span.service', null, e.id),
         h('span.mark-state', null, MARK_STATE[st])),
       h('button.erase', { type: 'button', title: 'Зняти позначку: питання повернеться', 'aria-label': `Зняти позначку з ${e.id}`, onclick: () => ctl.unmark(domain.id, e.id) }, '×'));

@@ -40,11 +40,13 @@ export function toJSON(text, domain) {
       on: e.on,
       source: e.source,
     })),
+    // `asked` is the wording the question failed on that day, kept as a record;
+    // the bank may ask it differently by now.
     marks: [...view.marks.values()].map((e) => ({
       question: e.id,
       domain: domain.id,
       topic: bankTopic(e.id),
-      text: e.text,
+      asked: e.text,
       on: e.on,
     })),
     notes,

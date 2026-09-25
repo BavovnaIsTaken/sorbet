@@ -14,7 +14,7 @@ test('JSON answers have exactly the shape the spec gives', () => {
     on: '2026-09-24',
     source: 'option',
   });
-  assert.deepEqual(json.marks.map((m) => [m.question, m.text]), [['reward_size', null], ['unlock_pace', null]]);
+  assert.deepEqual(json.marks.map((m) => [m.question, m.asked]), [['reward_size', null], ['unlock_pace', null]]);
   assert.equal(json.title, 'Як я бачу ігри');
 });
 
