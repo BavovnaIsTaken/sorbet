@@ -66,7 +66,7 @@ export function mount(root, ctl) {
     renderHeader(s);
     const key = JSON.stringify([
       s.tab, s.scope, s.loading, s.skipped, s.focus, s.agentPick, s.fileDomain, Boolean(s.file),
-      s.own?.key, s.draft?.key, s.blitz && [s.blitz.shown, s.blitz.done],
+      s.draft?.key, s.blitz && [s.blitz.shown, s.blitz.done],
       ctl.inScope().map((d) => s.maps[d.id].text),
     ]);
     if (key !== mainKey) {
@@ -151,7 +151,6 @@ export function mount(root, ctl) {
       setDraft: (value) => ctl.setDraft(key, value),
       onDispose,
     };
-    const owning = s.own?.key === key;
     const region = [mixed(s) ? `${domain.name} · ` : '', topic?.title ?? q.topic];
     const counter = s.blitz ? h('span.round', null, `${s.blitz.shown + 1} з ${BLITZ_ROUND}`) : null;
     if (s.blitz) {
@@ -164,39 +163,13 @@ export function mount(root, ctl) {
       q.setup ? h('p.setup', null, q.setup) : null,
       h('h2.question', { id: 'question' }, q.text),
       viewFor(q)(ctx),
-      owning ? ownForm(s, domain, q) : h('div.aside', null,
+      // No box for own words, at the owner's request: when no option fits, «Не знаю»
+      // is how the owner says the question missed, and the question gets rewritten.
+      h('div.aside', null,
         h('button.quiet', { type: 'button', title: 'Питання не влучило: його треба переписати', onclick: () => ctl.dontKnow(domain, q) }, 'Не знаю'),
-        h('button.quiet', { type: 'button', title: 'Не зараз: питання повернеться таким самим', onclick: () => ctl.later(domain, q) }, s.blitz ? 'Далі' : 'Пізніше'),
-        q.kind === 'own_words' || s.blitz ? null
-          : h('button.quiet', { type: 'button', title: 'Написати позицію своїми словами', onclick: () => ctl.openOwn(key) }, 'Своє…')),
+        h('button.quiet', { type: 'button', title: 'Не зараз: питання повернеться таким самим', onclick: () => ctl.later(domain, q) }, s.blitz ? 'Далі' : 'Пізніше')),
       h('p.qid', null, q.id, q.author ? h('span.author', null, ` · питання від ${AUTHOR[q.author] ?? q.author}`) : null),
     );
-  }
-
-  function ownForm(s, domain, q) {
-    const submit = () => ctl.ownAnswer(domain, q, s.own?.text ?? '');
-    const text = h('textarea.own-text', {
-      id: 'own-text',
-      rows: 3,
-      placeholder: 'Одне речення, зрозуміле без питання перед очима',
-      value: s.own?.text ?? '',
-      oninput: (e) => ctl.draftOwn(e.target.value),
-      onkeydown: (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault();
-          submit();
-        } else if (e.key === 'Escape') ctl.closeOwn();
-      },
-    });
-    requestAnimationFrame(() => {
-      if (text.isConnected && document.activeElement !== text) text.focus({ preventScroll: true });
-    });
-    return h('form.own', { onsubmit: (e) => { e.preventDefault(); submit(); } },
-      h('label.own-label', { for: 'own-text' }, 'Своїми словами'),
-      text,
-      h('div.card-actions', null,
-        h('button.primary', { type: 'button', onclick: submit }, 'Нанести на мапу'),
-        h('button.quiet', { type: 'button', onclick: () => ctl.closeOwn() }, 'Скасувати')));
   }
 
   function done(s) {

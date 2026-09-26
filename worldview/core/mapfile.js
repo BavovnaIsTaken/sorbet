@@ -23,7 +23,7 @@
  * between the two apps unchanged. Service fields are the *last* bracket group
  * on a line (a sentence may carry brackets of its own), split on commas and told
  * apart by shape, in any order: `власник` (for the human reader; dropped on the
- * way in), the day, `своє` when the owner typed the line himself, the question id
+ * way in), the day, `своє` when the line was typed rather than picked, the question id
  * (ASCII lower case, digits, `_`), and anything else, which is kept as it was.
  * `своє` is Cyrillic so that no parser can take it for an id.
  *

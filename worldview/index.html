@@ -211,7 +211,7 @@
   .card.is-new { animation: enter .24s ease-out; }
   @keyframes enter { from { opacity: 0; transform: translateY(8px); } }
 
-  .region, .own-label, .legend-title, .panel-title, .map-head {
+  .region, .legend-title, .panel-title, .map-head {
     font-size: .74rem;
     font-weight: 600;
     letter-spacing: .16em;
@@ -292,20 +292,6 @@
   .quiet:disabled { opacity: .45; text-decoration: none; }
   .qid { margin: 12px 0 0; font-family: var(--mono); font-size: .72rem; color: var(--faint); }
 
-  .own { display: grid; gap: 10px; margin-top: 14px; }
-  .own-label { color: var(--ink-2); }
-  .own-text {
-    width: 100%;
-    min-height: 84px;
-    padding: 10px 12px;
-    border: 1.5px solid var(--rule-strong);
-    border-radius: 10px;
-    background: var(--paper);
-    font-family: var(--read);
-    font-size: 1.02rem;
-    line-height: 1.45;
-    resize: vertical;
-  }
   .card-actions, .panel-actions, .file-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
 
   /* a scene before the question */

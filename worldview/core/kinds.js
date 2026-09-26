@@ -55,7 +55,7 @@ export function parseBody(raw, id, text, notes) {
   if (FREQUENCY.test(text)) noteFrequency(id, notes);
   if (kind === 'one_of') return parseOneOf(raw, id, notes);
   if (kind === 'own_words') {
-    if (raw.line != null || raw.items != null) notes.push(`${id}: own_words не має ні шаблону, ні пунктів: рядок — це те, що набрав власник.`);
+    if (raw.line != null || raw.items != null) notes.push(`${id}: own_words не має ні шаблону, ні пунктів: рядок — це рівно введений текст.`);
     return { kind };
   }
   const items = parseItems(raw, id, kind, notes);

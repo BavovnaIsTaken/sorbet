@@ -9,7 +9,7 @@ import { GAMES } from './fixtures.js';
 
 const map = (body) => readMap(`# Як я бачу ігри\n\n${body}\n`);
 
-test('a sentence he typed himself is still marked as his', () => {
+test('a typed sentence is still marked as the owner’s own', () => {
   const v = map('## Прогресія\n\n- гравця тягне те, що він сам зламав у грі [власник, 2026-09-20, своє, what_pulls]');
   const e = v.answers.get('what_pulls');
   assert.equal(e.text, 'гравця тягне те, що він сам зламав у грі');

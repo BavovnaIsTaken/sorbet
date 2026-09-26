@@ -33,10 +33,14 @@ test('every show layered on the registry still fits its question', async () => {
   }
 });
 
-test('the questions this app shows cover every form and every show', () => {
+test('the questions this app shows cover every form but typing, and every show', () => {
   const all = bank.domains.flatMap((d) => d.questions);
-  assert.deepEqual([...new Set(all.map((q) => q.kind))].sort(), [...KINDS].sort());
+  assert.deepEqual([...new Set(all.map((q) => q.kind))].sort(), KINDS.filter((k) => k !== 'own_words').sort());
   assert.deepEqual([...new Set(all.filter((q) => q.kind === 'one_of').map((q) => q.show))].sort(), [...SHOWS].sort());
+});
+
+test('nothing in the banks this app owns asks the owner to type', () => {
+  for (const id of OWNED_HERE) assert.equal(domain(id).questions.filter((q) => q.kind === 'own_words').length, 0, id);
 });
 
 test('the spec example is kept word for word, and it is the owner’s', () => {

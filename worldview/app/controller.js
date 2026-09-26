@@ -8,7 +8,7 @@
  * "Done", because there is no end.
  */
 
-import { readMap, apply, inverse, blankMap, sectionFor, today, oneLine } from '../core/mapfile.js';
+import { readMap, apply, inverse, blankMap, sectionFor, today } from '../core/mapfile.js';
 import { queue, questionKey } from '../core/queue.js';
 import { lineFor } from '../core/kinds.js';
 import { toJSON, contextBlock } from '../core/export.js';
@@ -41,8 +41,6 @@ export function createController({ domains, notes, store, saver }) {
     /** @type {string|null} topic key */ focus: null,
     /** Work in progress on the card on screen (a rank order, taboo picks, open text). */
     draft: /** @type {{key: string, value: unknown}|null} */ (null),
-    /** "Своє…": the owner's own sentence for the card on screen. */
-    own: /** @type {{key: string, text: string}|null} */ (null),
     /** A quick round on a timer. */
     blitz: /** @type {{shown: number, plotted: {domain: string, id: string, line: string}[], done: boolean}|null} */ (null),
     fileDomain: domains[0].id,
@@ -151,7 +149,6 @@ export function createController({ domains, notes, store, saver }) {
   /** One card is done with, whichever way: moves a blitz round along. */
   function leaveCard() {
     state.draft = null;
-    state.own = null;
     if (!state.blitz) return;
     state.blitz.shown += 1;
     if (state.blitz.shown >= BLITZ_ROUND) state.blitz.done = true;
@@ -186,7 +183,7 @@ export function createController({ domains, notes, store, saver }) {
     setScope(scope) {
       state.scope = scope === 'all' || byId.has(scope) ? scope : state.scope;
       if (state.scope !== 'all') state.fileDomain = state.scope;
-      Object.assign(state, { focus: null, draft: null, own: null, file: null, agentPick: [], blitz: null });
+      Object.assign(state, { focus: null, draft: null, file: null, agentPick: [], blitz: null });
       emit();
     },
 
@@ -204,12 +201,6 @@ export function createController({ domains, notes, store, saver }) {
     answer(domain, question, pick) {
       const result = lineFor(question, pick);
       return result ? record(domain, question, result) : null;
-    },
-
-    /** An answer in the owner's own words, on any card. */
-    ownAnswer(domain, question, text) {
-      const line = oneLine(text);
-      return line ? record(domain, question, { line, source: 'own' }) : null;
     },
 
     /** "The question missed": a report on the question, not an answer. */
@@ -239,20 +230,8 @@ export function createController({ domains, notes, store, saver }) {
       state.draft = { key, value };
     },
 
-    openOwn(key) {
-      state.own = { key, text: '' };
-      emit();
-    },
-    closeOwn() {
-      state.own = null;
-      emit();
-    },
-    draftOwn(text) {
-      if (state.own) state.own.text = text;
-    },
-
     startBlitz() {
-      Object.assign(state, { blitz: { shown: 0, plotted: [], done: false }, tab: 'ask', focus: null, draft: null, own: null });
+      Object.assign(state, { blitz: { shown: 0, plotted: [], done: false }, tab: 'ask', focus: null, draft: null });
       emit();
     },
     stopBlitz() {
@@ -269,7 +248,6 @@ export function createController({ domains, notes, store, saver }) {
       state.focus = state.focus === key ? null : key;
       state.tab = 'ask';
       state.draft = null;
-      state.own = null;
       emit();
     },
 

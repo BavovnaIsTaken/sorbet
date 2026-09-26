@@ -1,9 +1,9 @@
 /**
- * One view per way of asking: the four forms, and for one_of the four ways of
+ * One view per way of asking: ranking, taboo, and for one_of the four ways of
  * showing it. Every view ends in ctx.pick(...), and the controller turns that
- * into the one line that lands in the map. Where the line is assembled or typed
- * (ranking, taboo, own_words), the view shows it before it lands: the button and
- * the line are two different things.
+ * into the one line that lands in the map. Where the line is assembled (ranking,
+ * taboo), the view shows it before it lands: the button and the line are two
+ * different things. Nothing here asks for typing: the owner does not type.
  *
  * @typedef {Object} CardContext
  * @property {import('../core/bank.js').Question} q
@@ -21,7 +21,7 @@ import { DEMOS } from './demos.js';
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** @type {Record<string, (ctx: CardContext) => Node[]>} */
-const VIEWS = { buttons: choice, duel, scale, feel, ranking: rank, taboo, own_words: ownWords };
+const VIEWS = { buttons: choice, duel, scale, feel, ranking: rank, taboo };
 
 /** The view for a question: its form, or for a one_of, how it is shown. */
 export const viewFor = (q) => VIEWS[q.kind === 'one_of' ? q.show : q.kind] ?? choice;
@@ -145,38 +145,6 @@ function taboo(ctx) {
   };
   paint();
   return [root];
-}
-
-/** Own words: the line is exactly what is typed, and it lands flagged «своє». */
-function ownWords(ctx) {
-  const { q } = ctx;
-  const text = () => (typeof ctx.draft() === 'string' ? ctx.draft() : '');
-  const preview = h('div');
-  const submit = h('button.primary', { type: 'button', disabled: !text().trim(), onclick: () => ctx.pick(text()) }, 'Нанести на мапу');
-  const paint = () => {
-    const line = lineFor(q, text())?.line;
-    preview.replaceChildren(lands(line, 'Рядок ляже рівно таким, як ти його напишеш, з позначкою «своє». Пиши так, щоб він читався без цього питання.'));
-    submit.disabled = !line;
-  };
-  const area = h('textarea.own-text', {
-    id: `own-words-${ctx.key}`,
-    rows: 2,
-    placeholder: 'Одне речення, зрозуміле без питання перед очима',
-    'aria-label': q.text,
-    value: text(),
-    oninput: (e) => {
-      ctx.setDraft(e.target.value);
-      paint();
-    },
-    onkeydown: (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        if (text().trim()) ctx.pick(text());
-      }
-    },
-  });
-  paint();
-  return [area, preview, h('div.card-actions', null, submit)];
 }
 
 function feel(ctx) {
