@@ -1,0 +1,55 @@
+{
+  "registry": {
+    "repo": "BavovnaIsTaken/AIGameIDE",
+    "branch": "develop",
+    "path": "docs/taste-registry.json",
+    "commit": "a15e700"
+  },
+  "name": "Ігри",
+  "title": "Як я бачу ігри",
+  "preamble": [
+    "Що власник вирішив про ігри взагалі, а не про якусь одну. План конкретного проєкту старший за цей файл."
+  ],
+  "questions": {
+    "inertia": {
+      "show": "feel",
+      "demo": "move",
+      "params": [
+        {
+          "inertia": 0.85
+        },
+        {
+          "inertia": 0
+        }
+      ]
+    },
+    "forgiving_hits": {
+      "show": "feel",
+      "demo": "hit",
+      "params": [
+        {
+          "forgive": 14
+        },
+        {
+          "forgive": 0
+        }
+      ]
+    },
+    "pace_control": {
+      "show": "feel",
+      "demo": "hit",
+      "params": [
+        {
+          "life": 800,
+          "every": 620,
+          "forgive": 6
+        },
+        {
+          "life": 2600,
+          "every": 1300,
+          "forgive": 6
+        }
+      ]
+    }
+  }
+}

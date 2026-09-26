@@ -8,8 +8,8 @@ import { h, replaceChildren } from './dom.js';
 import { legend, markState, questionKey, topicKey } from '../core/queue.js';
 import { contextSections } from '../core/export.js';
 import { sameText } from '../core/mapfile.js';
-import { CARD_VIEWS } from './cards.js';
-import { BLITZ_KINDS, BLITZ_ROUND, BLITZ_SECONDS } from './controller.js';
+import { viewFor } from './cards.js';
+import { blitzable, BLITZ_ROUND, BLITZ_SECONDS } from './controller.js';
 
 const STORE = {
   claude: { label: 'claude.ai', title: 'Мапа лежить у сховищі цієї сторінки на claude.ai. Твою бачиш лише ти.' },
@@ -20,6 +20,7 @@ const STORE = {
 const MARK_STATE = {
   waiting: 'питання чекає, поки його перепишуть',
   rewritten: 'банк уже питає інакше, і питання знову в черзі',
+  replaced: 'питання замінене іншим',
   gone: 'питання знято з банку, лишився запис',
 };
 
@@ -162,11 +163,11 @@ export function mount(root, ctl) {
       h('p.region', null, h('span.swatch', { 'aria-hidden': 'true' }), h('span', null, region), counter),
       q.setup ? h('p.setup', null, q.setup) : null,
       h('h2.question', { id: 'question' }, q.text),
-      (CARD_VIEWS[q.kind] ?? CARD_VIEWS.choice)(ctx),
+      viewFor(q)(ctx),
       owning ? ownForm(s, domain, q) : h('div.aside', null,
         h('button.quiet', { type: 'button', title: 'Питання не влучило: його треба переписати', onclick: () => ctl.dontKnow(domain, q) }, 'Не знаю'),
         h('button.quiet', { type: 'button', title: 'Не зараз: питання повернеться таким самим', onclick: () => ctl.later(domain, q) }, s.blitz ? 'Далі' : 'Пізніше'),
-        q.kind === 'open' || s.blitz ? null
+        q.kind === 'own_words' || s.blitz ? null
           : h('button.quiet', { type: 'button', title: 'Написати позицію своїми словами', onclick: () => ctl.openOwn(key) }, 'Своє…')),
       h('p.qid', null, q.id, q.author ? h('span.author', null, ` · питання від ${AUTHOR[q.author] ?? q.author}`) : null),
     );
@@ -213,7 +214,7 @@ export function mount(root, ctl) {
   }
 
   function countBlitzable(s) {
-    return ctl.inScope().reduce((n, d) => n + d.questions.filter((q) => BLITZ_KINDS.includes(q.kind)
+    return ctl.inScope().reduce((n, d) => n + d.questions.filter((q) => blitzable(q)
       && !s.maps[d.id].view.answers.has(q.id) && !s.maps[d.id].view.marks.has(q.id)).length, 0);
   }
 
@@ -323,7 +324,9 @@ export function mount(root, ctl) {
       h('div.line-body', null,
         h('span.line-text', null, e.text ? `«${e.text}»` : e.id),
         service ?? h('span.service', null, e.id),
-        h('span.mark-state', null, MARK_STATE[st])),
+        h('span.mark-state', null, st === 'replaced'
+          ? `замінено на ${domain.retired.find((r) => r.id === e.id).replacedBy}`
+          : MARK_STATE[st])),
       h('button.erase', { type: 'button', title: 'Зняти позначку: питання повернеться', 'aria-label': `Зняти позначку з ${e.id}`, onclick: () => ctl.unmark(domain.id, e.id) }, '×'));
   }
 

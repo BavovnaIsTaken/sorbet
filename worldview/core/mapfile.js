@@ -8,36 +8,48 @@
  *
  *   ## Керування
  *
- *   - гра не прощає промаху: влучання рівно таке, як виглядає [2026-09-24, forgiving_hits]
- *   - руку видно до пікселя [2026-09-24, aim_assist, своє]
+ *   - гра не прощає промаху: влучання рівно таке, як виглядає [власник, 2026-09-24, forgiving_hits]
+ *   - гравця тягне те, що він сам зламав у грі [власник, 2026-09-20, своє, what_pulls]
  *
  *   ## Не знаю
  *
- *   - Як часто гра зберігає прогрес? [2026-09-24, checkpoint_density]
+ *   - Як часто гра зберігає прогрес? [власник, 2026-09-24, checkpoint_density]
  *
  * A line under "Не знаю" keeps the wording the question failed on. It is a
  * snapshot of what was asked that day, not a reference to the bank: once the
  * question is rewritten the two differ, and the snapshot is the record.
  *
- * Service fields sit in brackets at the end of a line: the day, the question
- * id, and `своє` when the owner wrote the line in their own words. The flag is
- * Cyrillic so that no parser can take it for an ASCII id. This module is the
- * only place that knows the format. Edits touch only the lines they are about;
- * whatever the parser does not recognise stays verbatim where it was.
+ * The format is the one AIGameIDE's TasteMap reads and writes, so a file moves
+ * between the two apps unchanged. Service fields are the *last* bracket group
+ * on a line (a sentence may carry brackets of its own), split on commas and told
+ * apart by shape, in any order: `власник` (for the human reader; dropped on the
+ * way in), the day, `своє` when the owner typed the line himself, the question id
+ * (ASCII lower case, digits, `_`), and anything else, which is kept as it was.
+ * `своє` is Cyrillic so that no parser can take it for an id.
+ *
+ * This module is the only place that knows the format. Edits touch only the
+ * lines they are about; whatever the parser does not recognise stays verbatim
+ * where it was.
  */
 
 export const DONT_KNOW = 'Не знаю';
+/** What the same section was called before 2026-09-24. Read, never written. */
+const DONT_KNOW_BEFORE = 'Пропущені';
+const AUTHOR = 'власник';
+const OWN = 'своє';
 
 export const PREAMBLE = [
   'Що власник вирішив загалом, а не про якусь одну роботу.',
   'Конкретне завдання старше за цей файл.',
 ];
 
-// `own` is how this app spelled the flag for its first hours; it is read as
-// `своє` and rewritten on the next save, because other parsers take it for an id.
-const ENTRY = /^[-*+][ \t]+(\S.*?)[ \t]+\[(\d{4}-\d{2}-\d{2}),[ \t]*([a-z0-9_]+)(?:,[ \t]*(своє|own))?\][ \t]*$/;
+const ITEM = /^[-*+][ \t]+(.*\S)[ \t]*$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+const ID = /^[a-z0-9_]+$/;
+// `own` is how this app spelled the flag for its first hours. Next to a real id
+// it is read as `своє` and renamed on the next save; alone it is an id, as it is
+// to TasteMap.
 const LEGACY_OWN = /,[ \t]*own\][ \t]*$/;
-const BARE_MARK = /^[-*+][ \t]+([a-z0-9_]+)[ \t]*$/;
 const H1 = /^#[ \t]+(.*\S)[ \t]*$/;
 const H2 = /^##[ \t]+(.*\S)[ \t]*$/;
 const LIST_ITEM = /^[-*+][ \t]/;
@@ -50,6 +62,7 @@ const LIST_ITEM = /^[-*+][ \t]/;
  *                                    Null only for a bare legacy mark ("- reward_size").
  * @property {string|null} on         Day it was written, YYYY-MM-DD. Null for a bare mark.
  * @property {'option'|'own'} source  Tapped a ready sentence, or wrote their own.
+ * @property {string[]} extras        Bracket fields this version does not know, kept.
  * @property {string|null} section    Heading of the section the entry sits in.
  * @property {number} at              Line index in the file.
  *
@@ -69,13 +82,14 @@ const LIST_ITEM = /^[-*+][ \t]/;
  * @property {Map<string, Entry>} answers By question id; a later duplicate wins.
  * @property {Map<string, Entry>} marks   By question id.
  *
- * @typedef {{type: 'answer', id: string, section: string, line: string, on: string, source: 'option'|'own'}
+ * @typedef {{type: 'answer', id: string, section: string, line: string, on: string|null, source: 'option'|'own', extras?: string[]}
  *         | {type: 'unanswer', id: string}
  *         | {type: 'mark', id: string, text: string|null, on: string|null}
  *         | {type: 'unmark', id: string}
- *         | {type: 'replace', text: string}} Op  One change to a map file.
+ *         | {type: 'replace', text: string}
+ *         | {type: 'batch', ops: Op[]}} Op  One change to a map file.
  *
- * @typedef {{title: string, topics: {id: string, title: string}[], questions: {id: string, topic: string}[]}} Layout
+ * @typedef {{title: string, preamble?: string[], topics: {id: string, title: string}[], questions: {id: string, topic: string}[]}} Layout
  *   The part of a bank domain the file layout depends on.
  */
 
@@ -92,7 +106,7 @@ export function today(d = new Date()) {
 
 /** A new, empty map for a domain. */
 export function blankMap(layout) {
-  return [`# ${layout.title}`, '', ...PREAMBLE, ''].join('\n');
+  return [`# ${layout.title}`, '', ...(layout.preamble?.length ? layout.preamble : PREAMBLE), ''].join('\n');
 }
 
 /** Heading a new answer to this question goes under. */
@@ -136,12 +150,16 @@ export function readMap(text) {
  */
 export function apply(text, layout, op) {
   if (op.type === 'replace') return op.text;
+  if (op.type === 'batch') return op.ops.reduce((t, o) => apply(t, layout, o), text);
   const removal = op.type === 'unanswer' || op.type === 'unmark';
   if (removal && !text?.trim()) return text;
   const doc = split(text?.trim() ? text : blankMap(layout));
   switch (op.type) {
     case 'answer':
+      // an answer replaces whatever the question said before, and a question
+      // answered on a later pass landed, whatever it did the first time
       put(doc.lines, layout, 'answer', op.id, formatAnswer(op), op.section);
+      drop(doc.lines, 'mark', op.id);
       break;
     case 'mark':
       put(doc.lines, layout, 'mark', op.id, formatMark(op), DONT_KNOW);
@@ -163,15 +181,29 @@ export function apply(text, layout, op) {
  */
 export function inverse(before, layout, op) {
   if (op.type === 'replace') return { type: 'replace', text: before ?? '' };
+  if (op.type === 'batch') {
+    const steps = [];
+    let text = before;
+    for (const o of op.ops) {
+      steps.unshift(inverse(text, layout, o));
+      text = apply(text, layout, o);
+    }
+    return { type: 'batch', ops: steps };
+  }
   const view = readMap(before);
-  if (op.type === 'answer' || op.type === 'unanswer') {
+  const answerBack = () => {
     const prev = view.answers.get(op.id);
     if (!prev) return { type: 'unanswer', id: op.id };
     const section = prev.section ?? sectionFor(layout, op.id);
-    return { type: 'answer', id: op.id, section, line: prev.text, on: prev.on, source: prev.source };
-  }
-  const prev = view.marks.get(op.id);
-  return prev ? { type: 'mark', id: op.id, text: prev.text, on: prev.on } : { type: 'unmark', id: op.id };
+    return { type: 'answer', id: op.id, section, line: prev.text, on: prev.on, source: prev.source, extras: prev.extras };
+  };
+  const markBack = () => {
+    const prev = view.marks.get(op.id);
+    return prev ? { type: 'mark', id: op.id, text: prev.text, on: prev.on } : { type: 'unmark', id: op.id };
+  };
+  if (op.type === 'unanswer') return answerBack();
+  if (op.type === 'answer') return view.marks.has(op.id) ? { type: 'batch', ops: [answerBack(), markBack()] } : answerBack();
+  return markBack();
 }
 
 /**
@@ -190,7 +222,7 @@ export function* scan(lines) {
     }
     const h2 = H2.exec(line);
     if (h2) {
-      section = { title: h2[1], at, dontKnow: sameText(h2[1], DONT_KNOW) };
+      section = { title: h2[1], at, dontKnow: sameText(h2[1], DONT_KNOW) || sameText(h2[1], DONT_KNOW_BEFORE) };
       yield { at, kind: 'section', line, section };
       continue;
     }
@@ -224,28 +256,62 @@ function join({ lines, eol, final }) {
   return lines.length ? lines.join(eol) + (final ? eol : '') : '';
 }
 
+/**
+ * Splits a row into its sentence and its service fields: the *last* bracket group
+ * only, and only when it ends the line.
+ */
+export function splitRow(body) {
+  const open = body.lastIndexOf('[');
+  if (!body.endsWith(']') || open < 0) return { text: body, fields: [] };
+  const text = body.slice(0, open).trim();
+  if (!text) return { text: body, fields: [] };
+  const fields = body.slice(open + 1, -1).split(',').map((f) => f.trim()).filter(Boolean);
+  return { text, fields };
+}
+
 function parseEntry(line, section) {
-  const m = ENTRY.exec(line);
-  if (m) return { id: m[3], text: m[1], on: m[2], source: m[4] ? 'own' : 'option' };
-  if (section?.dontKnow) {
-    const bare = BARE_MARK.exec(line);
-    if (bare) return { id: bare[1], text: null, on: null, source: 'option' };
+  const item = ITEM.exec(line);
+  if (!item) return null;
+  const body = item[1];
+  const { text, fields } = splitRow(body);
+  let on = null;
+  let own = false;
+  const ids = [];
+  const extras = [];
+  for (const field of fields) {
+    if (field === AUTHOR) continue;
+    if (DAY.test(field)) on = field;
+    else if (field === OWN) own = true;
+    else if (ID.test(field)) ids.push(field);
+    else extras.push(field);
   }
+  if (ids.length > 1 && ids.includes('own')) {
+    ids.splice(ids.indexOf('own'), 1);
+    own = true;
+  }
+  const id = ids.pop();
+  if (id) {
+    extras.unshift(...ids);
+    return { id, text, on, source: own ? 'own' : 'option', extras };
+  }
+  if (section?.dontKnow && !fields.length && ID.test(body)) return { id: body, text: null, on: null, source: 'option', extras: [] };
   return null;
 }
 
 function renameLegacyOwn(lines) {
   lines.forEach((line, i) => {
-    if (LEGACY_OWN.test(line) && ENTRY.test(line)) lines[i] = line.replace(LEGACY_OWN, ', своє]');
+    if (LEGACY_OWN.test(line) && parseEntry(line, null)?.source === 'own') lines[i] = line.replace(LEGACY_OWN, ', своє]');
   });
 }
 
-function formatAnswer({ line, on, id, source }) {
-  return `- ${oneLine(line)} [${on}, ${id}${source === 'own' ? ', своє' : ''}]`;
+/** The field order TasteMap writes: author, day, own-words flag, id, the rest. */
+function formatAnswer({ line, on, id, source, extras = [] }) {
+  const fields = [AUTHOR, on, source === 'own' ? OWN : null, id, ...extras].filter(Boolean);
+  return `- ${oneLine(line)} [${fields.join(', ')}]`;
 }
 
 function formatMark({ text, on, id }) {
-  return text == null ? `- ${id}` : `- ${oneLine(text)} [${on}, ${id}]`;
+  return text == null ? `- ${id}` : `- ${oneLine(text)} [${[AUTHOR, on, id].filter(Boolean).join(', ')}]`;
 }
 
 /** Replaces the entry in place, or adds it at the end of its section. */

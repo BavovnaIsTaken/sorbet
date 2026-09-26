@@ -1,3 +1,4 @@
 {
-  "domains": ["games", "code", "agent"]
+  "domains": ["games", "code", "agent"],
+  "shows": ["games"]
 }

@@ -30,14 +30,14 @@ test('a new answer lands at the end of its section and nothing else moves', () =
   const out = apply(text, GAMES, answer('inertia', 'рушає миттєво'));
   assert.equal(out, text.replace(
     '[2026-09-24, forgiving_hits]\n',
-    '[2026-09-24, forgiving_hits]\n- рушає миттєво [2026-09-25, inertia]\n',
+    '[2026-09-24, forgiving_hits]\n- рушає миттєво [власник, 2026-09-25, inertia]\n',
   ));
 });
 
 test('an answer to the same question replaces the line in place', () => {
   const out = apply(SPEC_MAP, GAMES, answer('forgiving_hits', 'гра прощає дрібний промах'));
   const lines = out.split('\n');
-  assert.equal(lines[7], '- гра прощає дрібний промах [2026-09-25, forgiving_hits]');
+  assert.equal(lines[7], '- гра прощає дрібний промах [власник, 2026-09-25, forgiving_hits]');
   assert.equal(out.replace(lines[7], ''), SPEC_MAP.replace(SPEC_MAP.split('\n')[7], ''));
 });
 
@@ -46,12 +46,12 @@ test('new sections follow the bank topic order and stay above "Не знаю"', 
   text = apply(text, GAMES, answer('who_picks', 'складність вибирає гравець'));
   const heads = text.split('\n').filter((l) => l.startsWith('## '));
   assert.deepEqual(heads, ['## Керування', '## Складність', '## Провал', '## Не знаю']);
-  assert.match(text, /\n\n## Складність\n\n- складність вибирає гравець \[2026-09-25, who_picks\]\n\n## Провал\n\n/);
+  assert.match(text, /\n\n## Складність\n\n- складність вибирає гравець \[власник, 2026-09-25, who_picks\]\n\n## Провал\n\n/);
 });
 
 test('a blank map is created with the title and the preamble', () => {
   const out = apply(null, GAMES, answer('forgiving_hits', 'гра не прощає промаху'));
-  assert.equal(out, `${blankMap(GAMES)}\n## Керування\n\n- гра не прощає промаху [2026-09-25, forgiving_hits]\n`);
+  assert.equal(out, `${blankMap(GAMES)}\n## Керування\n\n- гра не прощає промаху [власник, 2026-09-25, forgiving_hits]\n`);
 });
 
 test('lines the parser does not understand survive every edit verbatim', () => {
@@ -102,13 +102,13 @@ test('marks carry the question text, go last, and replace the previous mark', ()
   let out = apply(blankMap(GAMES), GAMES, { type: 'mark', id: 'blame', text: 'Після програшу гравець має подумати…', on: '2026-09-24' });
   out = apply(out, GAMES, answer('forgiving_hits', 'гра не прощає промаху'));
   out = apply(out, GAMES, { type: 'mark', id: 'blame', text: 'Нове формулювання?', on: '2026-09-26' });
-  assert.match(out, /## Керування[\s\S]*## Не знаю\n\n- Нове формулювання\? \[2026-09-26, blame\]\n$/);
+  assert.match(out, /## Керування[\s\S]*## Не знаю\n\n- Нове формулювання\? \[власник, 2026-09-26, blame\]\n$/);
   assert.equal(readMap(out).marks.get('blame').text, 'Нове формулювання?');
 });
 
 test('own answers are flagged and the flag round-trips', () => {
   const out = apply(null, GAMES, answer('inertia', 'рука відчуває вагу', { source: 'own' }));
-  assert.match(out, /- рука відчуває вагу \[2026-09-25, inertia, своє\]\n$/);
+  assert.match(out, /- рука відчуває вагу \[власник, 2026-09-25, своє, inertia\]\n$/);
   assert.equal(readMap(out).answers.get('inertia').source, 'own');
 });
 
@@ -125,7 +125,7 @@ test('the legacy own flag is read, and the next save renames it and nothing else
   assert.doesNotMatch(out, /, own\]/);
   assert.equal(
     out,
-    legacy.replace(', own]', ', своє]') + '\n## Провал\n\n- після програшу гравець бачить власну помилку [2026-09-25, blame]\n',
+    legacy.replace(', own]', ', своє]') + '\n## Провал\n\n- після програшу гравець бачить власну помилку [власник, 2026-09-25, blame]\n',
   );
 });
 
@@ -155,8 +155,9 @@ test('undo restores the file for every kind of change', () => {
   for (const op of ops) {
     const after = apply(SPEC_MAP, GAMES, op);
     const back = apply(after, GAMES, inverse(SPEC_MAP, GAMES, op));
-    if (op.type === 'unanswer' || op.type === 'unmark') {
-      // a restored entry goes to the end of its section; the content is what matters
+    if (op.type === 'unanswer' || op.type === 'unmark' || op.id === 'forgiving_hits') {
+      // a restored entry goes back in this app's own spelling, at the end of its
+      // section when it had been removed; the content is what matters
       assert.deepEqual(entries(readMap(back).answers), entries(readMap(SPEC_MAP).answers), op.type);
       assert.deepEqual(entries(readMap(back).marks), entries(readMap(SPEC_MAP).marks), op.type);
     } else {

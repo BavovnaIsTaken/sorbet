@@ -91,11 +91,13 @@ export function legend(domain, view) {
 
 /**
  * Where a "не знаю" mark stands for the author: still waiting for a rewrite,
- * already rewritten (the question is back in the queue), or gone from the bank.
- * @param {Entry} mark @param {Domain} domain @returns {'waiting'|'rewritten'|'gone'}
+ * already rewritten under the same id (the question is back in the queue),
+ * replaced by a different question under a new id, or simply gone from the bank.
+ * Only a waiting mark asks anyone for work; the others are records.
+ * @param {Entry} mark @param {Domain} domain @returns {'waiting'|'rewritten'|'replaced'|'gone'}
  */
 export function markState(mark, domain) {
   const question = domain.questions.find((q) => q.id === mark.id);
-  if (!question) return 'gone';
+  if (!question) return domain.retired?.some((r) => r.id === mark.id && r.replacedBy) ? 'replaced' : 'gone';
   return mark.text === null || sameText(mark.text, question.text) ? 'waiting' : 'rewritten';
 }

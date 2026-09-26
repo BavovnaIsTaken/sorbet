@@ -19,8 +19,8 @@ import { toJSON, contextBlock } from '../core/export.js';
 /** @typedef {import('../core/bank.js').Question} Question */
 /** @typedef {import('../core/mapfile.js').Op} Op */
 
-/** Kinds quick enough to answer on a timer. */
-export const BLITZ_KINDS = ['choice', 'scale'];
+/** Questions quick enough to answer on a timer: one tap, nothing to read first. */
+export const blitzable = (q) => q.kind === 'one_of' && (q.show === 'buttons' || q.show === 'scale');
 export const BLITZ_ROUND = 10;
 export const BLITZ_SECONDS = 8;
 
@@ -196,7 +196,7 @@ export function createController({ domains, notes, store, saver }) {
     /** @returns {{domain: Domain, question: Question}|null} */
     current() {
       const items = queue(maps(), { skipped: state.skipped, focus: state.focus });
-      const pool = state.blitz ? items.filter(({ question }) => BLITZ_KINDS.includes(question.kind)) : items;
+      const pool = state.blitz ? items.filter(({ question }) => blitzable(question)) : items;
       return pool[0] ?? null;
     },
 

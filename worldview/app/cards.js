@@ -1,8 +1,9 @@
 /**
- * One view per question kind. Every view ends in ctx.pick(...), and the
- * controller turns that into the one line that lands in the map. Where the
- * line is assembled (rank, taboo, open), the view shows it before it lands:
- * the button and the line are two different things.
+ * One view per way of asking: the four forms, and for one_of the four ways of
+ * showing it. Every view ends in ctx.pick(...), and the controller turns that
+ * into the one line that lands in the map. Where the line is assembled or typed
+ * (ranking, taboo, own_words), the view shows it before it lands: the button and
+ * the line are two different things.
  *
  * @typedef {Object} CardContext
  * @property {import('../core/bank.js').Question} q
@@ -20,7 +21,12 @@ import { DEMOS } from './demos.js';
 const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** @type {Record<string, (ctx: CardContext) => Node[]>} */
-export const CARD_VIEWS = { choice, duel, scale, rank, taboo, open, feel };
+const VIEWS = { buttons: choice, duel, scale, feel, ranking: rank, taboo, own_words: ownWords };
+
+/** The view for a question: its form, or for a one_of, how it is shown. */
+export const viewFor = (q) => VIEWS[q.kind === 'one_of' ? q.show : q.kind] ?? choice;
+
+const LETTERS = 'АБВГ';
 
 /** Buttons that plot on tap. The chosen one fills in the plotter's ink first. */
 function optionButtons(ctx, body = (o) => [h('span.option-label', null, o.label)]) {
@@ -35,7 +41,7 @@ function optionButtons(ctx, body = (o) => [h('span.option-label', null, o.label)
         button.classList.add('is-chosen');
         setTimeout(() => ctx.pick(i), reducedMotion() ? 0 : 170);
       },
-    }, h('span.pin', { 'aria-hidden': 'true' }), body(o), h('kbd', { 'aria-hidden': 'true' }, String(i + 1)));
+    }, h('span.pin', { 'aria-hidden': 'true' }), body(o, i), h('kbd', { 'aria-hidden': 'true' }, String(i + 1)));
     return button;
   });
 }
@@ -141,20 +147,21 @@ function taboo(ctx) {
   return [root];
 }
 
-function open(ctx) {
+/** Own words: the line is exactly what is typed, and it lands flagged «своє». */
+function ownWords(ctx) {
   const { q } = ctx;
   const text = () => (typeof ctx.draft() === 'string' ? ctx.draft() : '');
   const preview = h('div');
   const submit = h('button.primary', { type: 'button', disabled: !text().trim(), onclick: () => ctx.pick(text()) }, 'Нанести на мапу');
   const paint = () => {
     const line = lineFor(q, text())?.line;
-    preview.replaceChildren(lands(line, q.line.replace('{text}', '…')));
+    preview.replaceChildren(lands(line, 'Рядок ляже рівно таким, як ти його напишеш, з позначкою «своє». Пиши так, щоб він читався без цього питання.'));
     submit.disabled = !line;
   };
   const area = h('textarea.own-text', {
-    id: `open-${ctx.key}`,
+    id: `own-words-${ctx.key}`,
     rows: 2,
-    placeholder: q.placeholder || 'Своїми словами',
+    placeholder: 'Одне речення, зрозуміле без питання перед очима',
     'aria-label': q.text,
     value: text(),
     oninput: (e) => {
@@ -178,12 +185,13 @@ function feel(ctx) {
   if (!demo) return [h('p.hint', null, `Демо «${q.demo}» у цій версії нема. Обери за підписами.`), ...choice(ctx)];
   const stage = h('div.stage');
   let stop = null;
+  // blind: the labels would give the answer away, so variants are letters
   const tabs = q.options.map((o, i) => h('button.variant', {
     type: 'button',
     role: 'tab',
     'aria-selected': String(i === 0),
     onclick: () => show(i),
-  }, `Варіант ${o.label}`));
+  }, `Варіант ${LETTERS[i]}`));
   const show = (i) => {
     tabs.forEach((t, j) => t.setAttribute('aria-selected', String(j === i)));
     stop?.();
@@ -199,6 +207,6 @@ function feel(ctx) {
       stage,
       h('p.feel-hint', null, demo.hint)),
     h('p.pick-caption', null, 'Спробуй обидва. Котрий твій?'),
-    h('div.options.is-pair', { role: 'group', 'aria-label': 'Вибір' }, optionButtons(ctx, (o) => h('span.option-label', null, `Варіант ${o.label}`))),
+    h('div.options.is-pair', { role: 'group', 'aria-label': 'Вибір' }, optionButtons(ctx, (o, i) => h('span.option-label', null, `Варіант ${LETTERS[i]}`))),
   ];
 }
