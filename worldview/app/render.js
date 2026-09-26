@@ -288,9 +288,16 @@ export function mount(root, ctl) {
     const e = item.entry;
     const service = e.on ? h('span.service', null, `[${[e.on, e.id, e.source === 'own' ? 'своє' : null].filter(Boolean).join(', ')}]`) : null;
     if (item.kind === 'answer') {
+      // a line whose question left the bank (retired, or never asked here) is gone for good once erased
+      const comesBack = domain.questions.some((q) => q.id === e.id);
       return h('li.line', null, bullet,
         h('div.line-body', null, h('span.line-text', null, e.text), service),
-        h('button.erase', { type: 'button', title: 'Стерти: питання повернеться', 'aria-label': `Стерти «${e.text}»`, onclick: () => ctl.erase(domain.id, e.id) }, '×'));
+        h('button.erase', {
+          type: 'button',
+          title: comesBack ? 'Стерти: питання повернеться' : 'Стерти назовсім: цього питання вже не ставлять',
+          'aria-label': `Стерти «${e.text}»`,
+          onclick: () => ctl.erase(domain.id, e.id),
+        }, '×'));
     }
     const st = markState(e, domain);
     return h(`li.line.is-mark.is-${st}`, null, bullet,
